@@ -1,0 +1,35 @@
+{
+  "tests": [
+    {
+      "name": "Get all reviews",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": [
+        {
+          "id": "number",
+          "author": "string",
+          "rating": "number",
+          "text": "string"
+        }
+      ],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create new review",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "author": "Тест Тестович",
+        "rating": 5,
+        "text": "Отличный магазин!"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "id": "number",
+        "author": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

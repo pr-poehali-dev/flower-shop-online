@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -47,17 +47,51 @@ const reviews: Review[] = [
   { id: 3, author: 'Анна С.', rating: 4, text: 'Очень красивый букет, единственное — хотелось бы больше вариантов упаковки. В целом рекомендую!', date: '5 октября 2024' },
 ];
 
+const API_URL = 'https://functions.poehali.dev/e9c48f9b-ae9b-49d1-9d68-7d2a8eef5910';
+
 export default function Index() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('Все');
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [deliveryType, setDeliveryType] = useState<'courier' | 'pickup'>('courier');
+  const [deliveryDate, setDeliveryDate] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'sbp'>('card');
+  const [cardComment, setCardComment] = useState('');
   const { toast } = useToast();
 
   const categories = ['Все', 'Романтика', 'Весна', 'Лето', 'Премиум'];
 
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setDbProducts(data);
+    } catch (error) {
+      toast({
+        title: 'Ошибка загрузки',
+        description: 'Не удалось загрузить товары',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredProducts = selectedCategory === 'Все' 
-    ? products 
-    : products.filter(p => p.category === selectedCategory);
+    ? dbProducts 
+    : dbProducts.filter(p => p.category === selectedCategory);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -91,6 +125,68 @@ export default function Index() {
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleSubmitOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const orderData = {
+        customerName,
+        customerPhone,
+        customerEmail,
+        deliveryType,
+        deliveryDate,
+        deliveryTime,
+        deliveryAddress,
+        paymentMethod,
+        cardComment,
+        totalAmount: cartTotal,
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price
+        }))
+      };
+
+      const response = await fetch('https://functions.poehali.dev/62287563-1454-422a-8ba8-e4d522a8e761', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit order');
+      }
+
+      toast({
+        title: 'Заказ успешно оформлен!',
+        description: 'Мы свяжемся с вами в ближайшее время',
+      });
+
+      setCart([]);
+      setIsOrderDialogOpen(false);
+      setIsCartOpen(false);
+      
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerEmail('');
+      setDeliveryType('courier');
+      setDeliveryDate('');
+      setDeliveryTime('');
+      setDeliveryAddress('');
+      setPaymentMethod('card');
+      setCardComment('');
+    } catch (error) {
+      toast({
+        title: 'Ошибка оформления заказа',
+        description: 'Попробуйте еще раз позже',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -173,7 +269,7 @@ export default function Index() {
                         <span>Итого:</span>
                         <span>{cartTotal} ₽</span>
                       </div>
-                      <Dialog>
+                      <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
                         <DialogTrigger asChild>
                           <Button className="w-full" size="lg">
                             Оформить заказ
@@ -183,42 +279,90 @@ export default function Index() {
                           <DialogHeader>
                             <DialogTitle>Оформление заказа</DialogTitle>
                           </DialogHeader>
-                          <form className="space-y-4 py-4">
+                          <form onSubmit={handleSubmitOrder} className="space-y-4 py-4">
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label htmlFor="name">Имя</Label>
-                                <Input id="name" placeholder="Ваше имя" />
+                                <Input 
+                                  id="name" 
+                                  placeholder="Ваше имя" 
+                                  value={customerName}
+                                  onChange={(e) => setCustomerName(e.target.value)}
+                                  required
+                                />
                               </div>
                               <div className="space-y-2">
                                 <Label htmlFor="phone">Телефон</Label>
-                                <Input id="phone" placeholder="+7 (___) ___-__-__" />
+                                <Input 
+                                  id="phone" 
+                                  placeholder="+7 (___) ___-__-__" 
+                                  value={customerPhone}
+                                  onChange={(e) => setCustomerPhone(e.target.value)}
+                                  required
+                                />
                               </div>
                             </div>
                             <div className="space-y-2">
+                              <Label htmlFor="email">Email</Label>
+                              <Input 
+                                id="email" 
+                                type="email" 
+                                placeholder="example@mail.ru" 
+                                value={customerEmail}
+                                onChange={(e) => setCustomerEmail(e.target.value)}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Способ доставки</Label>
+                              <RadioGroup value={deliveryType} onValueChange={(value) => setDeliveryType(value as 'courier' | 'pickup')}>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="courier" id="courier" />
+                                  <Label htmlFor="courier" className="cursor-pointer">Курьером</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="pickup" id="pickup" />
+                                  <Label htmlFor="pickup" className="cursor-pointer">Самовывоз</Label>
+                                </div>
+                              </RadioGroup>
+                            </div>
+                            <div className="space-y-2">
                               <Label htmlFor="address">Адрес доставки</Label>
-                              <Input id="address" placeholder="Улица, дом, квартира" />
+                              <Input 
+                                id="address" 
+                                placeholder="Улица, дом, квартира" 
+                                value={deliveryAddress}
+                                onChange={(e) => setDeliveryAddress(e.target.value)}
+                                required
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="date">Дата доставки</Label>
-                              <Input id="date" type="date" />
+                              <Input 
+                                id="date" 
+                                type="date" 
+                                value={deliveryDate}
+                                onChange={(e) => setDeliveryDate(e.target.value)}
+                                required
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="time">Время доставки</Label>
-                              <Select>
+                              <Select value={deliveryTime} onValueChange={setDeliveryTime} required>
                                 <SelectTrigger id="time">
                                   <SelectValue placeholder="Выберите время" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="9-12">9:00 - 12:00</SelectItem>
-                                  <SelectItem value="12-15">12:00 - 15:00</SelectItem>
-                                  <SelectItem value="15-18">15:00 - 18:00</SelectItem>
-                                  <SelectItem value="18-21">18:00 - 21:00</SelectItem>
+                                  <SelectItem value="9:00-12:00">9:00 - 12:00</SelectItem>
+                                  <SelectItem value="12:00-15:00">12:00 - 15:00</SelectItem>
+                                  <SelectItem value="15:00-18:00">15:00 - 18:00</SelectItem>
+                                  <SelectItem value="18:00-21:00">18:00 - 21:00</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
                             <div className="space-y-2">
                               <Label>Способ оплаты</Label>
-                              <RadioGroup defaultValue="card">
+                              <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as 'card' | 'sbp')}>
                                 <div className="flex items-center space-x-2">
                                   <RadioGroupItem value="card" id="card" />
                                   <Label htmlFor="card" className="cursor-pointer">Банковская карта</Label>
@@ -231,7 +375,12 @@ export default function Index() {
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="comment">Комментарий к заказу</Label>
-                              <Textarea id="comment" placeholder="Пожелания по оформлению, текст открытки..." />
+                              <Textarea 
+                                id="comment" 
+                                placeholder="Пожелания по оформлению, текст открытки..." 
+                                value={cardComment}
+                                onChange={(e) => setCardComment(e.target.value)}
+                              />
                             </div>
                             <div className="bg-muted p-4 rounded-lg">
                               <h4 className="font-semibold mb-2">Ваш заказ:</h4>

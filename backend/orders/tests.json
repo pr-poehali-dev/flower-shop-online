@@ -1,0 +1,42 @@
+{
+  "tests": [
+    {
+      "name": "Get all orders",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create new order",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "customerName": "Тестовый покупатель",
+        "customerPhone": "+79991234567",
+        "customerEmail": "test@example.com",
+        "deliveryType": "courier",
+        "deliveryDate": "2024-11-01",
+        "deliveryTime": "14:00-16:00",
+        "deliveryAddress": "г. Москва, ул. Тестовая, д. 1",
+        "paymentMethod": "card",
+        "cardComment": "С днем рождения!",
+        "totalAmount": 5500,
+        "items": [
+          {
+            "id": 1,
+            "name": "Нежный рассвет",
+            "quantity": 1,
+            "price": 3500
+          }
+        ]
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "orderId": "number",
+        "status": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

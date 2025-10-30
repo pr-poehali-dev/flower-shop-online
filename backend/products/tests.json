@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "name": "Get all products",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": [
+        {
+          "id": "number",
+          "name": "string",
+          "category": "string",
+          "price": "number"
+        }
+      ],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get products by category",
+      "method": "GET",
+      "path": "/?category=Премиум",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
